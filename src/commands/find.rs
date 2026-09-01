@@ -17,8 +17,10 @@ pub fn run(query: &str) -> Result<()> {
     Ok(())
 }
 
-/// Print matches grouped by domain/workspace, sharing the same rendering
-/// between `find` and the multi-match case of `go`.
+/// Print matches grouped by domain/workspace. Used by `find`; `go`'s
+/// multi-match picker renders its own single-line-per-match labels instead,
+/// since a picker needs one selectable label per match rather than a
+/// location-grouped listing.
 pub fn print_matches(matches: &[&Repo]) {
     let mut last_location: Option<String> = None;
     for repo in matches {

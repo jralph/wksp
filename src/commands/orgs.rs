@@ -18,7 +18,7 @@ pub fn run() -> Result<()> {
         println!("{org:<30} {count} {noun}");
     }
 
-    let unattributed = tree.repos.iter().filter(|r| r.org.is_none()).count();
+    let unattributed = tree.unattributed_repos().len();
     if unattributed > 0 {
         println!("(no origin remote / unparsable): {unattributed} repo(s)");
     }

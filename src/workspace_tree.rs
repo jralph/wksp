@@ -13,13 +13,12 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{Context, Result};
-use serde::Serialize;
 
 /// Directory name reserved for linked Git worktrees within a workspace.
 pub const WORKTREES_DIR: &str = ".worktrees";
 
 /// A single discovered repository checkout.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct Repo {
     /// Repository directory name, e.g. `customer-service`.
     pub name: String,
@@ -181,9 +180,12 @@ impl WorkspaceTree {
             .collect()
     }
 
-    /// Whether `org` is a known org in this index.
-    pub fn is_known_org(&self, org: &str) -> bool {
-        self.repos.iter().any(|r| r.org.as_deref() == Some(org))
+    /// All repos with no resolvable org (no `origin` remote, or an
+    /// unparsable one). Reachable via `find`/`go`'s bare-name substring
+    /// match, but never via the `org/`, `org/repo` forms, `move`, or `get`,
+    /// since those all require a concrete org string.
+    pub fn unattributed_repos(&self) -> Vec<&Repo> {
+        self.repos.iter().filter(|r| r.org.is_none()).collect()
     }
 
     /// All repos within a domain, and optionally a specific workspace.
@@ -414,10 +416,6 @@ mod tests {
         init_repo_with_remote(&personal_repo, "git@github.com:jralph/git-manager-go.git");
 
         let tree = WorkspaceTree::discover_at(root).unwrap();
-
-        assert!(tree.is_known_org("gymshark"));
-        assert!(tree.is_known_org("jralph"));
-        assert!(!tree.is_known_org("no-such-org"));
 
         assert_eq!(tree.find_by_org("gymshark").len(), 1);
         assert_eq!(tree.find_by_name("git-manager").len(), 1);

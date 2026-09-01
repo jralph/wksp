@@ -1,7 +1,7 @@
 //! `wksp make <domain>/<workspace>`
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
 
@@ -21,6 +21,12 @@ impl MissingPieces {
     fn none_missing(&self) -> bool {
         !self.agents_md && !self.readme_md
     }
+}
+
+/// The agent CLI chosen to generate files, plus the exact binary to invoke.
+struct SelectedAgent {
+    kind: AgentKind,
+    binary: PathBuf,
 }
 
 pub fn run(
@@ -67,7 +73,7 @@ pub fn run(
 
     if !domain_missing.none_missing() {
         generate_level(
-            agent,
+            &agent,
             &domain_path,
             LevelKind::Domain,
             &domain,
@@ -80,7 +86,7 @@ pub fn run(
     if !workspace_missing.none_missing() {
         let parent_agents_md = fs::read_to_string(domain_path.join("AGENTS.md")).ok();
         generate_level(
-            agent,
+            &agent,
             &workspace_path,
             LevelKind::Workspace,
             &workspace,
@@ -120,12 +126,18 @@ fn resolve_description(
     Ok(Some(description))
 }
 
-fn select_agent(agent_override: Option<&str>) -> Result<AgentKind> {
+fn select_agent(agent_override: Option<&str>) -> Result<SelectedAgent> {
     if let Some(name) = agent_override {
-        return AgentKind::parse(name).ok_or_else(|| {
+        let kind = AgentKind::parse(name).ok_or_else(|| {
             anyhow!(
                 "unknown agent `{name}` (try: kiro, kiro-cli, opencode, claude, codex, pi, omp)"
             )
+        })?;
+        // No detection was done for an explicit override; fall back to a
+        // bare binary name and let the OS resolve it via PATH at exec time.
+        return Ok(SelectedAgent {
+            kind,
+            binary: PathBuf::from(kind.binary_name()),
         });
     }
 
@@ -135,7 +147,10 @@ fn select_agent(agent_override: Option<&str>) -> Result<AgentKind> {
             "no supported agent CLI was found on PATH (looked for: kiro, kiro-cli, opencode, claude, codex, pi, omp). \
 Install one of these, or pass --agent <name> if it's installed under a different PATH entry."
         )),
-        1 => Ok(detected[0].kind),
+        1 => Ok(SelectedAgent {
+            kind: detected[0].kind,
+            binary: detected[0].binary_path.clone(),
+        }),
         _ => {
             let labels: Vec<String> = detected.iter().map(|a| a.kind.slug().to_string()).collect();
             let index = select(
@@ -143,7 +158,10 @@ Install one of these, or pass --agent <name> if it's installed under a different
                 &labels,
                 "Pass --agent <name> to choose one non-interactively.",
             )?;
-            Ok(detected[index].kind)
+            Ok(SelectedAgent {
+                kind: detected[index].kind,
+                binary: detected[index].binary_path.clone(),
+            })
         }
     }
 }
@@ -165,7 +183,7 @@ impl LevelKind {
 
 /// Generate AGENTS.md and/or README.md for one level (domain or workspace).
 fn generate_level(
-    agent: AgentKind,
+    agent: &SelectedAgent,
     dir: &Path,
     kind: LevelKind,
     name: &str,
@@ -189,9 +207,9 @@ fn generate_level(
     println!(
         "Generating {} files for `{name}` via `{}`...",
         kind.label(),
-        agent.slug()
+        agent.kind.slug()
     );
-    let output = run_headless(agent, &prompt, dir)?;
+    let output = run_headless(agent.kind, &agent.binary, &prompt, dir)?;
 
     // The agent was instructed to write the files itself. If exactly one file
     // was requested and it still doesn't exist, fall back to writing the
@@ -221,11 +239,11 @@ fn generate_level(
         (true, true) => {
             println!(
                 "  warning: `{}` did not write either requested file. Its response was:\n\n{output}",
-                agent.slug()
+                agent.kind.slug()
             );
             anyhow::bail!(
                 "{} did not create {} or {}",
-                agent.slug(),
+                agent.kind.slug(),
                 agents_md_path.display(),
                 readme_path.display()
             );

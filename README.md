@@ -54,7 +54,7 @@ Every command has full `--help` text with examples — run `wksp --help` or `wks
 | `wksp make <domain>/<workspace>` | Scaffold a domain/workspace's `AGENTS.md`/`README.md` via a coding-agent CLI. |
 | `wksp status [scope]` | Git status (clean/dirty, ahead/behind) summary across matching repos. |
 | `wksp orgs` | List every distinct org found across checked-out repos. |
-| `wksp doctor` | Validate the tree against the documented convention. |
+| `wksp doctor` | Validate the tree against the documented convention (empty workspaces, worktree shape, repos with no resolvable org). |
 | `wksp init <shell>` | Shell integration or tab-completion scripts. |
 
 `move` and `get` accept `-y`/`--yes` to auto-confirm prompts (useful when driving `wksp` from a script or agent). When stdin isn't an interactive terminal, prompts that would otherwise hang instead fail with an explicit message telling you which flag to pass.

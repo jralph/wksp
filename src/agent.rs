@@ -50,7 +50,7 @@ impl AgentKind {
 
     /// The binary name looked up on `PATH`. Distinct from `slug()` only where
     /// the CLI binary name differs from the friendly name.
-    fn binary_name(&self) -> &'static str {
+    pub fn binary_name(&self) -> &'static str {
         match self {
             AgentKind::ClaudeCode => "claude",
             other => other.slug(),
@@ -112,10 +112,21 @@ fn is_executable(_path: &std::path::Path) -> bool {
 /// Run `agent` headlessly with `prompt`, executed with `cwd` as the working
 /// directory, and return its captured stdout.
 ///
+/// `binary` is the executable to invoke: pass a `DetectedAgent::binary_path`
+/// to pin to the exact binary that was found during detection (avoiding a
+/// re-search of `PATH`, and any risk of it changing between detection and
+/// invocation), or a bare name (e.g. from `--agent <name>` with no prior
+/// detection) to let the OS resolve it via `PATH` at exec time.
+///
 /// Each agent's non-interactive contract differs; this centralizes the
 /// per-agent flag mapping so callers only deal with a plain prompt string.
-pub fn run_headless(agent: AgentKind, prompt: &str, cwd: &std::path::Path) -> Result<String> {
-    let mut command = build_command(agent, prompt);
+pub fn run_headless(
+    agent: AgentKind,
+    binary: &std::path::Path,
+    prompt: &str,
+    cwd: &std::path::Path,
+) -> Result<String> {
+    let mut command = build_command(agent, binary, prompt);
     command.current_dir(cwd);
 
     let output = command
@@ -135,10 +146,10 @@ pub fn run_headless(agent: AgentKind, prompt: &str, cwd: &std::path::Path) -> Re
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
-fn build_command(agent: AgentKind, prompt: &str) -> Command {
+fn build_command(agent: AgentKind, binary: &std::path::Path, prompt: &str) -> Command {
     match agent {
         AgentKind::Kiro | AgentKind::KiroCli => {
-            let mut cmd = Command::new(agent.binary_name());
+            let mut cmd = Command::new(binary);
             cmd.arg("chat")
                 .arg(prompt)
                 .arg("--no-interactive")
@@ -146,12 +157,12 @@ fn build_command(agent: AgentKind, prompt: &str) -> Command {
             cmd
         }
         AgentKind::OpenCode => {
-            let mut cmd = Command::new(agent.binary_name());
+            let mut cmd = Command::new(binary);
             cmd.arg("run").arg(prompt);
             cmd
         }
         AgentKind::ClaudeCode => {
-            let mut cmd = Command::new(agent.binary_name());
+            let mut cmd = Command::new(binary);
             cmd.arg("-p")
                 .arg(prompt)
                 .arg("--allowedTools")
@@ -159,7 +170,7 @@ fn build_command(agent: AgentKind, prompt: &str) -> Command {
             cmd
         }
         AgentKind::Codex => {
-            let mut cmd = Command::new(agent.binary_name());
+            let mut cmd = Command::new(binary);
             cmd.arg("exec").arg(prompt);
             cmd
         }
@@ -168,7 +179,7 @@ fn build_command(agent: AgentKind, prompt: &str) -> Command {
             // writing; pass the prompt as a bare argument and let the
             // invocation fail loudly if that assumption is wrong, rather than
             // silently guessing wrong flags.
-            let mut cmd = Command::new(agent.binary_name());
+            let mut cmd = Command::new(binary);
             cmd.arg(prompt);
             cmd
         }

@@ -16,6 +16,7 @@ pub fn run() -> Result<()> {
     }
 
     check_domains(&tree, &mut issues)?;
+    check_unattributed_repos(&tree, &mut issues);
 
     if issues.is_empty() {
         println!("No issues found under {}.", tree.root.display());
@@ -123,9 +124,128 @@ fn check_worktrees_dir(worktrees_path: &std::path::Path, issues: &mut Vec<String
     Ok(())
 }
 
+/// Repos with no resolvable org (no `origin` remote, or an unparsable one)
+/// are only ever reachable via `find`/`go`'s bare-name substring match; the
+/// `org/`, `org/repo` forms and `move`/`get` can never resolve them, since
+/// there is no string that means "no org". Flag them so this isn't a silent
+/// trap for whoever hits it.
+fn check_unattributed_repos(tree: &WorkspaceTree, issues: &mut Vec<String>) {
+    for repo in tree.unattributed_repos() {
+        issues.push(format!(
+            "{}: no resolvable `origin` remote — only reachable via `find`/`go` by bare name, not by org/repo, `move`, or `get`",
+            repo.path.display()
+        ));
+    }
+}
+
 fn is_hidden(path: &std::path::Path) -> bool {
     path.file_name()
         .and_then(|n| n.to_str())
         .map(|n| n.starts_with('.'))
         .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::process::Command;
+    use tempfile::TempDir;
+
+    fn init_repo(dir: &std::path::Path, remote: Option<&str>) {
+        std::fs::create_dir_all(dir).unwrap();
+        Command::new("git")
+            .arg("-C")
+            .arg(dir)
+            .args(["init", "-q"])
+            .status()
+            .unwrap();
+        if let Some(remote) = remote {
+            Command::new("git")
+                .arg("-C")
+                .arg(dir)
+                .args(["remote", "add", "origin", remote])
+                .status()
+                .unwrap();
+        }
+    }
+
+    #[test]
+    fn flags_repo_with_no_origin_remote() {
+        let tmp = TempDir::new().unwrap();
+        let root = tmp.path().to_path_buf();
+
+        let attributed = root.join("platform").join("commerce").join("with-remote");
+        init_repo(&attributed, Some("git@github.com:gymshark/with-remote.git"));
+
+        let orphan = root.join("platform").join("commerce").join("orphan-repo");
+        init_repo(&orphan, None);
+
+        let tree = WorkspaceTree::discover_at(root).unwrap();
+        let mut issues = Vec::new();
+        check_unattributed_repos(&tree, &mut issues);
+
+        assert_eq!(issues.len(), 1);
+        assert!(issues[0].contains("orphan-repo"));
+        assert!(issues[0].contains("find"));
+        assert!(issues[0].contains("move"));
+    }
+
+    #[test]
+    fn does_not_flag_repos_with_a_resolvable_remote() {
+        let tmp = TempDir::new().unwrap();
+        let root = tmp.path().to_path_buf();
+
+        let repo = root.join("platform").join("commerce").join("clean-repo");
+        init_repo(&repo, Some("git@github.com:gymshark/clean-repo.git"));
+
+        let tree = WorkspaceTree::discover_at(root).unwrap();
+        let mut issues = Vec::new();
+        check_unattributed_repos(&tree, &mut issues);
+
+        assert!(issues.is_empty());
+    }
+
+    #[test]
+    fn flags_empty_workspace_with_no_agents_md() {
+        let tmp = TempDir::new().unwrap();
+        let root = tmp.path().to_path_buf();
+        let workspace_path = root.join("platform").join("empty-workspace");
+        std::fs::create_dir_all(&workspace_path).unwrap();
+
+        let tree = WorkspaceTree::discover_at(root).unwrap();
+        let mut issues = Vec::new();
+        check_workspace(
+            &tree,
+            "platform",
+            "empty-workspace",
+            &workspace_path,
+            &mut issues,
+        )
+        .unwrap();
+
+        assert_eq!(issues.len(), 1);
+        assert!(issues[0].contains("empty workspace"));
+    }
+
+    #[test]
+    fn does_not_flag_workspace_with_agents_md_even_if_no_repos_yet() {
+        let tmp = TempDir::new().unwrap();
+        let root = tmp.path().to_path_buf();
+        let workspace_path = root.join("platform").join("new-workspace");
+        std::fs::create_dir_all(&workspace_path).unwrap();
+        std::fs::write(workspace_path.join("AGENTS.md"), "# placeholder").unwrap();
+
+        let tree = WorkspaceTree::discover_at(root).unwrap();
+        let mut issues = Vec::new();
+        check_workspace(
+            &tree,
+            "platform",
+            "new-workspace",
+            &workspace_path,
+            &mut issues,
+        )
+        .unwrap();
+
+        assert!(issues.is_empty());
+    }
 }

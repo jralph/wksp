@@ -111,7 +111,9 @@ disk. This is a filesystem move: the repo keeps its Git history, remotes, and \
 worktrees; only its location under ~/Workspaces changes.
 
 ORG_REPO must be the exact `org/repo` form (unlike `find`/`go`, no fuzzy \
-matching is done here, since a move should target exactly one repo).
+matching is done here, since a move should target exactly one repo). A repo \
+with no resolvable `origin` remote has no `org/repo` form and cannot be \
+targeted this way — see `wksp doctor`, which flags such repos.
 
 DESTINATION is `domain/workspace`. If either the domain or workspace doesn't \
 exist yet, you're asked whether to create it; accepting runs `wksp make` for \
@@ -137,7 +139,9 @@ Examples:
 
     /// Clone a repo into a domain/workspace via `git clone`.
     #[command(long_about = "\
-Clone ORG_REPO via `git clone` into DESTINATION (`domain/workspace`).
+Clone ORG_REPO via `git clone` into DESTINATION (`domain/workspace`). ORG_REPO \
+must be the exact `org/repo` form (a repo with no resolvable `origin` remote \
+has no such form and cannot be targeted — see `wksp doctor`).
 
 If either the destination domain or workspace doesn't exist yet, you're asked \
 whether to create it; accepting runs `wksp make` for you (real AGENTS.md and \
@@ -267,7 +271,9 @@ workspaces) and print a report. Does not modify anything.
 Flags:
   - workspaces with zero repos and zero AGENTS.md,
   - non-worktree directories found inside a `.worktrees` directory,
-  - domains that contain files/dirs other than workspaces, AGENTS.md, README.md.
+  - domains that contain files/dirs other than workspaces, AGENTS.md, README.md,
+  - repos with no resolvable `origin` remote (these are only reachable via \
+`find`/`go` by bare name — never via `org/repo`, `move`, or `get`).
 
 Example:
   wksp doctor
