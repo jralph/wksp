@@ -1,7 +1,7 @@
 //! `wksp go <repo>`
 //!
 //! Contract: on success, prints *only* the resolved workspace path to
-//! stdout, with no trailing decoration, so `wksp init <shell>`'s wrapper
+//! stdout, with no trailing decoration, so `wksp shell <shell>`'s wrapper
 //! function can capture it and `cd`. Everything else (prompts, errors,
 //! disambiguation UI) goes to stderr.
 

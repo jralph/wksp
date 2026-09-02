@@ -7,7 +7,7 @@
 //! performs the `cd` in the calling shell. This mirrors the pattern used by
 //! tools like `zoxide` and `direnv`.
 
-/// Supported shells for `wksp init <shell>`.
+/// Supported shells for `wksp shell <shell>`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Shell {
     Bash,
@@ -27,7 +27,7 @@ impl Shell {
 }
 
 /// Render the shell init script for the given shell. Intended to be eval'd,
-/// e.g. `eval "$(wksp init zsh)"` in `~/.zshrc`.
+/// e.g. `eval "$(wksp shell zsh)"` in `~/.zshrc`.
 pub fn render_init_script(shell: Shell) -> String {
     match shell {
         Shell::Bash | Shell::Zsh => bash_like_script(),
@@ -37,7 +37,7 @@ pub fn render_init_script(shell: Shell) -> String {
 
 fn bash_like_script() -> String {
     r#"# wksp shell integration
-# Add to your shell rc file: eval "$(wksp init bash)"  (or zsh)
+# Add to your shell rc file: eval "$(wksp shell bash)"  (or zsh)
 wksp() {
     if [ "$1" = "go" ]; then
         local dest
@@ -59,7 +59,7 @@ wksp() {
 
 fn fish_script() -> String {
     r#"# wksp shell integration
-# Add to your shell config: wksp init fish | source
+# Add to your shell config: wksp shell fish | source
 function wksp
     if test "$argv[1]" = "go"
         set -l dest (command wksp $argv)

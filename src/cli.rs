@@ -4,6 +4,8 @@
 //! (including examples) that an agent or a first-time user can drive this
 //! tool correctly from `--help` alone, without reading external docs.
 
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
@@ -82,7 +84,7 @@ repo directory itself) so a wrapping shell function can `cd` into it.
 wksp cannot change your shell's working directory directly — it is a plain \
 subprocess. Install shell integration once with:
 
-  eval \"$(wksp init zsh)\"    # or: wksp init bash / wksp init fish
+  eval \"$(wksp shell zsh)\"    # or: wksp shell bash / wksp shell fish
 
 after which `wksp go <repo>` in your shell will actually change directory.
 Without the shell integration, this command still works but only prints the \
@@ -280,30 +282,67 @@ Example:
 ")]
     Doctor,
 
+    /// Bootstrap the root of the workspace hierarchy itself.
+    #[command(long_about = "\
+Create the root of the workspace hierarchy (default `~/Workspaces`, or PATH if \
+given) if it doesn't exist yet, and generate its `AGENTS.md`/`README.md` via a \
+coding-agent CLI. Creates no domains, workspaces, or repos — just the root \
+directory and its two documentation files. Use `wksp make <domain>/<workspace>` \
+to scaffold an actual domain/workspace afterward.
+
+With no arguments, initializes `~/Workspaces`. Pass `--path <dir>` to \
+initialize a different root instead (this does not read or write `WKSP_ROOT`; \
+it's an explicit one-time choice of where to create things).
+
+If the root already has both files, this exits immediately with a message and \
+generates nothing. Otherwise you're prompted for an optional short description \
+of the root (context beyond the standard convention — you can leave it blank) \
+unless `--description` is given, then an agent CLI writes both files following \
+the documented domain -> workspace -> repo convention. Agent selection follows \
+the same rules as `wksp make`: `--agent <name>`, or auto-detect/pick among \
+kiro, kiro-cli, opencode, claude, codex, pi, omp found on PATH.
+
+Examples:
+  wksp init
+  wksp init --path ~/SomeFolder
+  wksp init --agent kiro-cli --description \"Personal + Gymshark work, split by domain\"
+")]
+    Init {
+        /// Root directory to initialize. Defaults to `~/Workspaces`.
+        #[arg(long)]
+        path: Option<PathBuf>,
+        /// Agent CLI to use (kiro, kiro-cli, opencode, claude, codex, pi, omp).
+        #[arg(long)]
+        agent: Option<String>,
+        /// Optional short description of the root, beyond the standard convention.
+        #[arg(long)]
+        description: Option<String>,
+    },
+
     /// Print shell integration for `wksp go`, or generate shell completions.
     #[command(long_about = "\
 Print a shell snippet to stdout. Two independent uses:
 
-  wksp init <shell>          shell integration enabling `wksp go` to actually \
+  wksp shell <shell>          shell integration enabling `wksp go` to actually \
 `cd` your shell (bash, zsh, fish). Add to your shell rc file:
-                                eval \"$(wksp init zsh)\"
+                                eval \"$(wksp shell zsh)\"
 
-  wksp init completions <shell>  clap-generated tab completions for wksp \
+  wksp shell completions <shell>  clap-generated tab completions for wksp \
 itself (bash, zsh, fish, elvish, powershell). Add similarly:
-                                eval \"$(wksp init completions zsh)\"
+                                eval \"$(wksp shell completions zsh)\"
 
 Examples:
-  eval \"$(wksp init zsh)\"
-  eval \"$(wksp init completions zsh)\"
+  eval \"$(wksp shell zsh)\"
+  eval \"$(wksp shell completions zsh)\"
 ")]
-    Init {
+    Shell {
         #[command(subcommand)]
-        target: InitTarget,
+        target: ShellTarget,
     },
 }
 
 #[derive(Subcommand, Debug)]
-pub enum InitTarget {
+pub enum ShellTarget {
     /// Shell integration so `wksp go` can `cd` your shell.
     Bash,
     /// Shell integration so `wksp go` can `cd` your shell.

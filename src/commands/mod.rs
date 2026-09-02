@@ -9,6 +9,7 @@ pub mod list;
 pub mod make;
 pub mod move_cmd;
 pub mod orgs;
+pub mod shell_setup;
 pub mod status;
 
 use std::path::{Path, PathBuf};

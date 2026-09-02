@@ -41,13 +41,13 @@ Run `make help` for every available target (`build`, `install`, `uninstall`, `cl
 
 ```bash
 # ~/.zshrc or ~/.bashrc
-eval "$(wksp init zsh)"   # or: bash / fish
+eval "$(wksp shell zsh)"   # or: bash / fish
 ```
 
 Tab completions:
 
 ```bash
-eval "$(wksp init completions zsh)"
+eval "$(wksp shell completions zsh)"
 ```
 
 ## Commands
@@ -65,13 +65,14 @@ Every command has full `--help` text with examples — run `wksp --help` or `wks
 | `wksp status [scope]` | Git status (clean/dirty, ahead/behind) summary across matching repos. |
 | `wksp orgs` | List every distinct org found across checked-out repos. |
 | `wksp doctor` | Validate the tree against the documented convention (empty workspaces, worktree shape, repos with no resolvable org). |
-| `wksp init <shell>` | Shell integration or tab-completion scripts. |
+| `wksp init [--path <dir>]` | Bootstrap the root of the hierarchy itself (default `~/Workspaces`): creates the root dir and its `AGENTS.md`/`README.md` via a coding-agent CLI. No domains/workspaces/repos. |
+| `wksp shell <shell>` | Shell integration (`wksp go` support) or tab-completion scripts. |
 
 `move` and `get` accept `-y`/`--yes` to auto-confirm prompts (useful when driving `wksp` from a script or agent). When stdin isn't an interactive terminal, prompts that would otherwise hang instead fail with an explicit message telling you which flag to pass.
 
-## `wksp make` and agent CLIs
+## `wksp make`/`wksp init` and agent CLIs
 
-`make` delegates writing `AGENTS.md`/`README.md` content to a coding-agent CLI, invoked headlessly (no interactive session). Supported out of the box: `kiro`, `kiro-cli`, `opencode`, `claude` (Claude Code), `codex`, `pi`, `omp`. If more than one is detected on `PATH` you'll be asked which to use; pass `--agent <name>` to skip that.
+Both `make` (scaffolds a domain/workspace) and `init` (bootstraps the hierarchy root) delegate writing `AGENTS.md`/`README.md` content to a coding-agent CLI, invoked headlessly (no interactive session). Supported out of the box: `kiro`, `kiro-cli`, `opencode`, `claude` (Claude Code), `codex`, `pi`, `omp`. If more than one is detected on `PATH` you'll be asked which to use; pass `--agent <name>` to skip that.
 
 ## Testing
 

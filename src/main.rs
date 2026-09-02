@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 
-use wksp::cli::{Cli, Commands, InitTarget};
+use wksp::cli::{Cli, Commands, ShellTarget};
 use wksp::commands;
 
 fn main() {
@@ -42,11 +42,16 @@ fn run() -> Result<()> {
         Commands::Status { scope } => commands::status::run(scope.as_deref()),
         Commands::Orgs => commands::orgs::run(),
         Commands::Doctor => commands::doctor::run(),
-        Commands::Init { target } => match target {
-            InitTarget::Bash => commands::init::run_shell_integration("bash"),
-            InitTarget::Zsh => commands::init::run_shell_integration("zsh"),
-            InitTarget::Fish => commands::init::run_shell_integration("fish"),
-            InitTarget::Completions { shell } => commands::init::run_completions(shell),
+        Commands::Init {
+            path,
+            agent,
+            description,
+        } => commands::init::run(path.as_deref(), agent.as_deref(), description.as_deref()),
+        Commands::Shell { target } => match target {
+            ShellTarget::Bash => commands::shell_setup::run_shell_integration("bash"),
+            ShellTarget::Zsh => commands::shell_setup::run_shell_integration("zsh"),
+            ShellTarget::Fish => commands::shell_setup::run_shell_integration("fish"),
+            ShellTarget::Completions { shell } => commands::shell_setup::run_completions(shell),
         },
     }
 }

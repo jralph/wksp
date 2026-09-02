@@ -6,5 +6,6 @@ pub mod agent;
 pub mod cli;
 pub mod commands;
 pub mod interact;
+pub mod scaffold;
 pub mod shell;
 pub mod workspace_tree;
