@@ -15,6 +15,14 @@ A repo's org/owner is never inferred from directory names — it's read from the
 ## Install
 
 ```bash
+make install
+```
+
+Builds the release binary and symlinks it into `~/.local/bin/wksp` (rebuilding later and re-running `make install` updates the same symlink). Warns if `~/.local/bin` isn't on your `PATH`. `make uninstall` removes it.
+
+Alternatively, without the Makefile:
+
+```bash
 cargo install --path .
 ```
 
@@ -24,6 +32,8 @@ or build a release binary directly:
 cargo build --release
 # binary at target/release/wksp
 ```
+
+Run `make help` for every available target (`build`, `install`, `uninstall`, `clean`, `test`, `fmt`, `lint`).
 
 ### Shell integration (optional, recommended)
 
@@ -69,6 +79,8 @@ Every command has full `--help` text with examples — run `wksp --help` or `wks
 cargo test
 cargo clippy --all-targets
 ```
+
+or `make test` / `make lint` (the latter treats warnings as errors).
 
 Override the tree root for testing or an alternate hierarchy via `WKSP_ROOT`:
 
